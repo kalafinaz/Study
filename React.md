@@ -111,3 +111,92 @@ function UserForm({ userId }) {
 ✅需要触发 UI 更新时。
 ✅状态变化需要反映在界面上。
 ✅需要参与 React 生命周期和闭包。
+
+# 2.useEffect
+## 2.1 useEffect(setup, dependencies?) 
+setup：具有副作用逻辑的函数。你的设置函数也可以选择返回一个清理函数。当你的组件被添加到 DOM 时(componentDidMount)，React 将运行你的设置函数。在每次使用更改的依赖重新渲染后，React 将首先使用旧值运行清理函数（如果你提供了它），然后使用新值运行你的设置函数。在你的组件从 DOM 中移除后(componentWillUnmount)，React 将运行你的清理函数。useEffect相当于componentDidMount，componentDidUpdate 和 componentWillUnmount 这三个生命周期函数的组合。
+## 2.2 何时使用
+如果你不尝试与某些外部系统（网络、某些浏览器 API 或第三方库，这些系统不受 React 控制，因此它们被称为外部系统。）同步，你可能不需要副作用
+## 2.3 useEffect 与 useLayoutEffect
+如果你的效果正在执行一些视觉操作（例如，定位工具提示），并且延迟很明显（例如，它闪烁），请将 useEffect 替换为 useLayoutEffect。
+## 2.4 useEffect 在客户端与服务器
+### 2.4.1 结论
+副作用仅在客户端上运行。它们不会在服务器渲染期间运行。比如在Next.js这种支持 SSR 的框架中。
+### 2.4.2 实践
+#### 2.4.2.1 注意事项
+useEffect 可实现在服务器和客户端显示不同的内容，因为useEffect 只会在客户端执行但是请谨慎使用此模式。避免出现水合不一致，页面闪烁， SEO 问题等。
+#### 2.4.2.2 水合（Hydration）
+在像 Next.js、Nuxt.js 这样的 SSR（服务器端渲染）框架中，页面的渲染分为两个阶段：
+SSR 阶段（服务器端渲染）：服务器生成 HTML，把页面的静态内容发给浏览器。
+Hydration 阶段（客户端激活）：客户端用 React 或 Vue 接管这份 HTML，把它变成一个可交互的 SPA。
+水合的目标是让客户端 React 组件状态与服务器端生成的 HTML 完全一致，从而顺利“激活”页面。
+#### 2.4.2.3 水合不一致（Hydration Mismatch），页面闪烁， SEO 问题
+水合不一致就是：服务器端渲染的 HTML 和客户端渲染的内容不一致。React 在水合时检测到这种情况，会报错。水合不一致会导致页面闪烁。搜索引擎爬虫一般只解析服务器端 HTML，不会执行客户端 JS。
+如果你用 useEffect 控制客户端独占内容，这些内容不会在服务器 HTML 中出现，导致搜索引擎完全看不到这些内容。
+#### 2.4.2.4 例子
+`import { useEffect, useState } from "react";
+function ServerClientContent() {
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true); // 只会在客户端执行
+  }, []);
+  return (
+    <div>
+      {isClient ? (
+        <p>这是客户端渲染的内容 🌐</p>
+      ) : (
+        <p>这是服务器渲染的内容 🖥️</p>
+      )}
+    </div>
+  );
+}
+export default ServerClientContent;`
+#### 2.4.2.5 其他方法
+在许多情况下，可以通过使用 CSS 有条件地显示不同的内容来避免这种需要
+#### 2.4.2.5.1 @media
+1.用@media 查询来隐藏服务器端的内容，仅客户端生效，大多数情况通用。
+✅ 优点：性能好，不需要 JS 操作，避免 hydration 问题。
+适用场景：响应式布局、设备差异展示。
+例子:
+`@media (min-width: 768px) {
+  .client-only {
+    display: none;
+  }
+}`
+#### 2.4.2.5.2 prefers-reduced-motion
+
+2.使用 prefers-reduced-motion，服务器不会解析 prefers-reduced-motion，可用于仅客户端显示内容时。
+✅ 优点：结合用户系统偏好，适合动画、特效控制。
+❌ 缺点：受限于浏览器和系统设置支持，不是通用方案。
+适用场景：动画、交互效果控制。
+例子:
+`@media (prefers-reduced-motion: reduce) {
+  .animated-content {
+    display: none;
+  }
+}`
+#### 2.4.2.5.3 visibility: hidden + JavaScript 反转
+使用 visibility: hidden + JavaScript 反转，通过 visibility: hidden 在服务器端隐藏客户端内容，等到客户端渲染后通过 JavaScript 让其可见。SEO 友好。
+✅ 优点：服务器端保留元素结构，SEO 友好。
+❌ 缺点：客户端需要 JS 反转，稍微增加渲染复杂度。
+适用场景：需要服务器端预渲染但在客户端控制显示。
+
+例子：
+`.client-only {
+  visibility: hidden;
+}
+useEffect(() => {
+  document.querySelector(".client-only").style.visibility = "visible";
+}, []);`
+#### 2.4.2.5.4 display: none + JavaScript 显示
+使用 display: none + JavaScript 显示，适用场景：需要减少闪烁，但不希望服务器渲染该内容，防止页面跳动。
+✅ 优点：防止页面跳动，减少客户端首次渲染时的视觉不一致。
+❌ 缺点：SEO 不友好，服务器端完全不展示。
+适用场景：页面加载后才展示的交互组件、弹窗、动态内容。
+例子：
+`.client-only {
+  display: none;
+}
+useEffect(() => {
+  document.querySelector(".client-only").style.display = "block";
+}, []);`
