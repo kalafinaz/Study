@@ -114,11 +114,11 @@ function UserForm({ userId }) {
 
 # 2.useEffect
 ## 2.1 useEffect(setup, dependencies?) 
-setup：具有副作用逻辑的函数。你的设置函数也可以选择返回一个清理函数。当你的组件被添加到 DOM 时(componentDidMount)，React 将运行你的设置函数。在每次使用更改的依赖重新渲染后，React 将首先使用旧值运行清理函数（如果你提供了它），然后使用新值运行你的设置函数。在你的组件从 DOM 中移除后(componentWillUnmount)，React 将运行你的清理函数。useEffect相当于componentDidMount，componentDidUpdate 和 componentWillUnmount 这三个生命周期函数的组合。
+setup：具有副作用逻辑的函数，也可以选择返回一个清理函数。当组件被添加到 DOM 时(componentDidMount)，React 将运行设置函数，在组件从 DOM 中移除后(componentWillUnmount)，React 将运行你的清理函数。在每次使用更改的依赖重新渲染后，React 将首先使用旧值运行清理函数（如果有提供的话），然后使用新值运行设置函数。useEffect相当于componentDidMount，componentDidUpdate 和 componentWillUnmount 这三个生命周期函数的组合。
 ## 2.2 何时使用
-如果你不尝试与某些外部系统（网络、某些浏览器 API 或第三方库，这些系统不受 React 控制，因此它们被称为外部系统。）同步，你可能不需要副作用
+如果不尝试与某些外部系统（网络、某些浏览器 API 或第三方库，这些系统不受 React 控制，因此它们被称为外部系统。）同步，可能不需要副作用。
 ## 2.3 useEffect 与 useLayoutEffect
-如果你的效果正在执行一些视觉操作（例如，定位工具提示），并且延迟很明显（例如，它闪烁），请将 useEffect 替换为 useLayoutEffect。
+如果正在执行一些视觉操作（例如，定位工具提示），并且延迟很明显（例如，它闪烁），请将 useEffect 替换为 useLayoutEffect。
 ## 2.4 useEffect 在客户端与服务器
 ### 2.4.1 结论
 副作用仅在客户端上运行。它们不会在服务器渲染期间运行。比如在Next.js这种支持 SSR 的框架中。
@@ -130,9 +130,15 @@ useEffect 可实现在服务器和客户端显示不同的内容，因为useEffe
 SSR 阶段（服务器端渲染）：服务器生成 HTML，把页面的静态内容发给浏览器。
 Hydration 阶段（客户端激活）：客户端用 React 或 Vue 接管这份 HTML，把它变成一个可交互的 SPA。
 水合的目标是让客户端 React 组件状态与服务器端生成的 HTML 完全一致，从而顺利“激活”页面。
+
 #### 2.4.2.3 水合不一致（Hydration Mismatch），页面闪烁， SEO 问题
-水合不一致就是：服务器端渲染的 HTML 和客户端渲染的内容不一致。React 在水合时检测到这种情况，会报错。水合不一致会导致页面闪烁。搜索引擎爬虫一般只解析服务器端 HTML，不会执行客户端 JS。
-如果你用 useEffect 控制客户端独占内容，这些内容不会在服务器 HTML 中出现，导致搜索引擎完全看不到这些内容。
+水合不一致就是：服务器端渲染的 HTML 和客户端渲染的内容不一致。React 在水合时检测到这种情况，会报错。
+
+水合不一致会导致页面闪烁。
+
+搜索引擎爬虫一般只解析服务器端 HTML，不会执行客户端 JS。
+如果用 useEffect 控制客户端独占内容，这些内容不会在服务器 HTML 中出现，导致搜索引擎完全看不到这些内容。
+
 #### 2.4.2.4 例子
 `import { useEffect, useState } from "react";
 function ServerClientContent() {
@@ -151,8 +157,9 @@ function ServerClientContent() {
   );
 }
 export default ServerClientContent;`
+
 #### 2.4.2.5 其他方法
-在许多情况下，可以通过使用 CSS 有条件地显示不同的内容来避免这种需要
+在许多情况下，可以通过使用 CSS 有条件地显示不同的内容来实现
 #### 2.4.2.5.1 @media
 1.用@media 查询来隐藏服务器端的内容，仅客户端生效，大多数情况通用。
 ✅ 优点：性能好，不需要 JS 操作，避免 hydration 问题。
@@ -163,6 +170,7 @@ export default ServerClientContent;`
     display: none;
   }
 }`
+
 #### 2.4.2.5.2 prefers-reduced-motion
 
 2.使用 prefers-reduced-motion，服务器不会解析 prefers-reduced-motion，可用于仅客户端显示内容时。
@@ -175,6 +183,7 @@ export default ServerClientContent;`
     display: none;
   }
 }`
+
 #### 2.4.2.5.3 visibility: hidden + JavaScript 反转
 使用 visibility: hidden + JavaScript 反转，通过 visibility: hidden 在服务器端隐藏客户端内容，等到客户端渲染后通过 JavaScript 让其可见。SEO 友好。
 ✅ 优点：服务器端保留元素结构，SEO 友好。
@@ -200,3 +209,142 @@ useEffect(() => {
 useEffect(() => {
   document.querySelector(".client-only").style.display = "block";
 }, []);`
+## 2.5 控制非 React 小部件
+控制非 React 小部件,通过使用 useRef 来存储非 React 组件的实例，通过useEffect实现首次渲染时 创建非 React 组件的实例并绑定到 ref，在依赖项变化时使用useState的set 函数保持状态同步。
+例子：
+`import { useState } from 'react';
+import Map from './Map.js';
+export default function App() {
+  const [zoomLevel, setZoomLevel] = useState(0);
+  return (
+    <>
+      Zoom level: {zoomLevel}x
+      <button onClick={() => setZoomLevel(zoomLevel + 1)}>+</button>
+      <button onClick={() => setZoomLevel(zoomLevel - 1)}>-</button>
+      <hr />
+      <Map zoomLevel={zoomLevel} />
+    </>
+  );
+}
+`
+
+`import { useRef, useEffect } from 'react';
+import { MapWidget } from './map-widget.js';
+export default function Map({ zoomLevel }) {
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  useEffect(() => {
+    if (mapRef.current === null) {
+      mapRef.current = new MapWidget(containerRef.current);
+    }
+    const map = mapRef.current;
+    map.setZoom(zoomLevel);
+  }, [zoomLevel]);
+  return (
+    <div
+      style={{ width: 200, height: 200 }}
+      ref={containerRef}
+    />
+  );
+}`
+
+`import 'leaflet/dist/leaflet.css';
+import * as L from 'leaflet';
+export class MapWidget {
+  constructor(domNode) {
+    this.map = L.map(domNode, {
+      zoomControl: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      scrollWheelZoom: false,
+      zoomAnimation: false,
+      touchZoom: false,
+      zoomSnap: 0.1
+    });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(this.map);
+    this.map.setView([0, 0], 0);
+  }
+  setZoom(level) {
+    this.map.setZoom(level);
+  }
+}`
+## 2.6 “竞态条件” 的影响
+通过useEffect 可以确保你的代码不会受到 “竞态条件” 的影响： 网络响应可能以与你发送它们不同的顺序到达。
+例子：
+
+`useEffect(() => {
+let ignore = false;
+setBio(null);
+fetchBio(person).then(result => {
+if (!ignore) {
+setBio(result);
+}
+});
+return () => {
+ignore = true;
+};
+}, [person]);`
+## 2.7 在副作用中创建对象
+避免使用在渲染期间创建的对象作为依赖。而是，在副作用中创建对象，可避免运行得太频繁。
+正确例子：
+`import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+const serverUrl = 'https://localhost:1234';
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+  useEffect(() => {
+    const options = {
+      serverUrl: serverUrl,
+      roomId: roomId
+    };
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+  return (
+    <>
+      <h1>Welcome to the {roomId} room!</h1>
+​      <input value={message} onChange={e => setMessage(e.target.value)} />
+​    </>
+  );
+};
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  return (
+​    <>
+​      <label>
+​        Choose the chat room:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+​      </label>
+      <hr />
+​      <ChatRoom roomId={roomId} />
+​    </>
+  );
+}
+`
+
+存在问题例子：
+`const serverUrl = 'https://localhost:1234';
+function ChatRoom({ roomId }) {
+const [message, setMessage] = useState('');
+const options = { // 🚩 This object is created from scratch on every re-render
+serverUrl: serverUrl,
+roomId: roomId
+};
+useEffect(() => {
+const connection = createConnection(options); // It's used inside the Effect
+connection.connect();
+return () => connection.disconnect();
+}, [options]); // 🚩 As a result, these dependencies are always different on a re-render
+// ...`
