@@ -348,3 +348,209 @@ connection.connect();
 return () => connection.disconnect();
 }, [options]); // 🚩 As a result, these dependencies are always different on a re-render
 // ...`
+# 3.Source Map
+## 3.1 什么是Source Map
+通俗的来说， Source Map 就是一个信息文件，里面存储了代码打包转换后的位置信息，实质是一个 json 描述文件，维护了打包前后的代码映射关系。
+## 3.2 webpack
+### 3.2.1 webpack.config.js
+`devtool: 'source-map',`
+### 3.2.2 Webpack 中的 Source Map
+source-map：外部。可以查看错误代码准确信息和源代码的错误位置。
+inline-source-map：内联。只生成一个内联 Source Map，可以查看错误代码准确信息和源代码的错误位置
+hidden-source-map：外部。可以查看错误代码准确信息，但不能追踪源代码错误，只能提示到构建后代码的错误位置。
+eval-source-map：内联。每一个文件都生成对应的 Source Map，都在 eval 中，可以查看错误代码准确信息 和 源代码的错误位置。
+nosources-source-map：外部。可以查看错误代码错误原因，但不能查看错误代码准确信息，并且没有任何源代码信息。
+cheap-source-map：外部。可以查看错误代码准确信息和源代码的错误位置，只能把错误精确到整行，忽略列。
+cheap-module-source-map：外部。可以错误代码准确信息和源代码的错误位置，module 会加入 loader 的 Source Map。
+
+#### 3.2.2.1 内联和外部的区别：
+
+外部生成了文件（.map），内联没有。
+内联构建速度更快。
+
+#### 3.2.2.2  7 种类型具体的案例演示：
+#### 3.2.2.2.1  演示代码：
+`console.log('source map!!!')
+var a = 1;
+console.log(a, b); //这一行肯定会报错`
+
+#### 3.2.2.2.2  source-map：
+`devtool: 'source-map'
+`
+编译后，可以查看错误代码准确信息和源代码的错误位置：
+
+![alt text](image-2.png)
+
+生成了 .map 文件：
+![alt text](image-3.png)
+#### 3.2.2.2.3  inline-source-map：
+`devtool: 'inline-source-map'
+`
+编译后，可以查看错误代码准确信息和源代码的错误位置：
+
+![alt text](image-4.png)
+
+但是没有生成 .map文件 ，而是以 base64 的形式插入到 sourceMappingURL 中：
+
+![alt text](image-5.png)
+
+#### 3.2.2.2.4  hidden-source-map：
+`devtool: 'hidden-source-map'
+`
+编译后，可以查看错误代码准确信息，但是无法查看源代码的位置：
+
+![alt text](image-6.png)
+
+生成了 .map 文件：
+
+![alt text](image-7.png)
+
+#### 3.2.2.2.5  eval-source-map：
+`devtool: 'eval-source-map'
+`
+编译后，可以查看错误代码准确信息和源代码的错误位置：
+![alt text](image-8.png)
+但是没有生成 .map文件 ，而是在 eval函数 中，包括 sourceMappingURL :
+![alt text](image-9.png)
+![alt text](image-10.png)
+
+#### 3.2.2.2.6  nosources-source-map：
+`devtool: 'nosources-source-map'
+`
+编译后，可以查看无法查看错误代码的准确位置和源代码的错误位置，只能提示错误原因：
+
+![alt text](image-11.png)
+生成了 .map 文件：
+![alt text](image-12.png)
+
+#### 3.2.2.2.7  cheap-source-map：
+`devtool: 'cheap-source-map'
+`
+编译后，可以查看错误代码准确信息和源代码的错误位置，但是忽略了具体的列（ 因为是b导致报错 ）：
+![alt text](image-13.png)
+生成了 .map 文件：
+![alt text](image-14.png)
+
+#### 3.2.2.2.8  cheap-module-source-map：
+因为需要 module ，所以案例中增加 loader ：
+`module: {
+    rules: [{
+        test: /\.css$/,
+        use: [
+            // style-loader：创建style标签，将js中的样式资源插入进去，添加到head中生效
+            'style-loader',
+            // css-loader：将css文件变成commonjs模块加载到js中，里面内容是样式字符串
+            'css-loader'
+        ]
+    }]
+}`
+
+在 src 目录下新建 index.css 文件，添加样式代码：
+
+`body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: pink;
+}`
+
+然后在 src/index.js 中引入 index.css ：
+
+`//引入index.css
+import './index.css';
+
+console.log('source map!!!')
+var a = 1;
+console.log(a, b); //这一行肯定会报错`
+
+修改 devtool ：
+`devtool: 'cheap-module-source-map'
+`
+打包后，打开浏览器，样式生效，说明 loader 引入成功。可以查看错误代码准确信息和源代码的错误位置，但是忽略了具体的列（ 因为是b导致报错 ）：
+
+![alt text](image-15.png)
+
+生成了 .map 文件，同时，将 loader 的信息也一起打包进来:
+
+![alt text](image-16.png)
+![alt text](image-17.png)
+
+
+## 3.3 作用
+错误追踪：如果代码经过打包、压缩，错误的行号可能不准确，而 SourceMap 可以帮助你准确定位到源代码的错误位置。
+
+调试优化：在浏览器开发者工具中，仍然可以查看和调试未压缩的原始源码，而不是混淆后的代码。
+
+代码可读性：虽然生产环境使用压缩代码提高性能，但 SourceMap 允许开发者在本地调试时仍然能看到格式化的代码。
+## 3.4 如何使用 Source Map
+![alt text](image.png)
+![alt text](image-1.png)
+## 3.5 工作原理
+### 3.5.1 被编译代码,bundle.js与bundle.js.map文件例子
+`console.log('source map!!!')
+console.log(a); //这一行肯定会报错`
+
+`/******/
+(() => { // webpackBootstrap
+    var __webpack_exports__ = {};
+    /*!**********************!*\
+      !*** ./src/index.js ***!
+      \**********************/
+    var a = 1;
+    console.log(a);
+    /******/
+})();
+//# sourceMappingURL=bundle.js.map`
+
+`{
+    "version": 3,
+    "sources": [
+        "webpack://learn-source-map/./src/index.js"
+    ],
+    "names": [],
+    "mappings": "AAAA;AACA,c",
+    "file": "bundle.js",
+    "sourcesContent": [
+        "var a = 1;\r\nconsole.log(a);"
+    ],
+    "sourceRoot": ""
+}`
+
+### 3.5.2 bundle.js与bundle.js.map例子说明
+//# sourceMappingURL=bundle.js.map
+正是因为这句注释，标记了该文件的 Source Map 地址，浏览器才可以正确的找到源代码的位置。sourceMappingURL 指向 Source Map 文件的 URL 。
+`dist` 文件夹中，除了 `bundle.js` 还有 `bundle.js.map` ，这个文件才是 `Source Map` 文件，也是 `sourceMappingURL` 指向的 `URL`
+
+mappings 属性的值是：AAAA; AACA, c ，
+这是一个字符串，它分成三层：
+
+第一层是行对应，以分号（; ）表示，每个分号对应转换后源码的一行。所以，第一个分号前的内容，就对应源码的第一行，以此类推。
+第二层是位置对应，以逗号（, ）表示，每个逗号对应转换后源码的一个位置。所以，第一个逗号前的内容，就对应该行源码的第一个位置，以此类推。
+第三层是位置转换，以VLQ 编码[16]表示，代表该位置对应的转换前的源码位置。
+
+总结，就是转换后的源码分成两行，第一行有一个位置，第二行有两个位置。
+
+
+# ?.小知识
+## 1.浅拷贝与深拷贝
+浅拷贝是创建一个新对象，这个对象有着原始对象属性值的一份精确拷贝。如果属性是基本类型，拷贝的就是基本类型的值，如果属性是引用类型，拷贝的就是内存地址 ，所以如果其中一个对象改变了这个地址，就会影响到另一个对象。
+深拷贝是将一个对象从内存中完整的拷贝一份出来,从堆内存中开辟一个新的区域存放新对象,且修改新对象不会影响原对象。
+
+总而言之，浅拷贝只复制指向某个对象的指针，而不复制对象本身，新旧对象还是共享同一块内存。但深拷贝会另外创造一个一模一样的对象，新对象跟原对象不共享内存，修改新对象不会改到原对象。
+
+代码示例：
+`const obj1 = { x: { y: 2 } };
+const obj2 = { ...obj1 }; // 浅拷贝
+console.log(obj1 === obj2);   // false （obj2 是一个新对象）
+console.log(obj1.x === obj2.x); // true （它们的 x 属性指向相同的地址）`
+
+tips：新对象与原始对象指向同一个内存地址指的是完全相同的对象
+
+代码示例：
+`const obj1 = { x: { y: 2 } };
+const obj2 = obj1; // 直接赋值
+console.log(obj1 === obj2);   // true （完全相同的对象）
+console.log(obj1.x === obj2.x); // true （内部对象也相同）
+`
+## 2.赋值和深/浅拷贝的区别
+
