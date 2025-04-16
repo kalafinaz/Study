@@ -531,6 +531,45 @@ mappings 属性的值是：AAAA; AACA, c ，
 总结，就是转换后的源码分成两行，第一行有一个位置，第二行有两个位置。
 
 
+# 4.webpack
+## 4.1 webpack-dev-server
+### 4.1.1 作用
+一个开发服务器，它的主要作用是：启动本地服务器、自动打包并热更新页面，代理后端请求
+![alt text](image-22.png)
+### 4.1.2 例子
+`devServer: {
+    static: './dist',
+    port: 3000,
+    hot: true,
+    proxy: [
+      {
+        context: ['/api'], // 匹配路径
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      }
+    ]
+  }`
+
+`{
+  "/rest/": {
+    "target": "http://127.0.0.1:8080",
+    "secure": false
+  }
+}`
+### 4.1.3 例子说明
+通过url正则匹配的方式进行url代理配置
+proxy：devServer代理配置
+/api: 表示需要代理的请求url
+target：反向代理的地址
+pathRewrite：请求地址重写，类似Nginx的Rewite功能
+logLevel：日志打印等级，支持['debug', 'info', 'warn', 'error', 'silent']，silent不打印日志
+logProvider： 自定义日志打印中间件
+secure：是否关闭https安全认证
+changeOrigin：修改代理请求host
+protocolRewrite：协议重写，http与https请求互转
+cookieDomainRewrite：修改cookieDomain的值
+headers：给所有请求添加headers配置
+proxyTimeout：请求超时时间
 # ?.小知识
 ## 1.浅拷贝与深拷贝
 浅拷贝是创建一个新对象，这个对象有着原始对象属性值的一份精确拷贝。如果属性是基本类型，拷贝的就是基本类型的值，如果属性是引用类型，拷贝的就是内存地址 ，所以如果其中一个对象改变了这个地址，就会影响到另一个对象。
@@ -553,4 +592,68 @@ console.log(obj1 === obj2);   // true （完全相同的对象）
 console.log(obj1.x === obj2.x); // true （内部对象也相同）
 `
 ## 2.赋值和深/浅拷贝的区别
+### 2.1 结论
+这三者的区别如下，不过比较的前提都是针对引用类型：
 
+当我们把一个对象赋值给一个新的变量时，赋的其实是该对象的在栈中的地址，而不是堆中的数据。也就是两个对象指向的是同一个存储空间，无论哪个对象发生改变，其实都是改变的存储空间的内容，因此，两个对象是联动的。
+浅拷贝：重新在堆中创建内存，拷贝前后对象的基本数据类型互不影响，但拷贝前后对象的引用类型因共享同一块内存，会相互影响。
+深拷贝：从堆内存中开辟一个新的区域存放新对象，对对象中的子对象进行递归拷贝,拷贝前后的两个对象互不影响。
+![alt text](image-23.png)
+### 2.2 例子说明
+`// 对象赋值
+let obj1 = { name: "Tom", arr1: [1, [2,3], 4]};
+let obj2 = obj1;
+obj2.name = "Jerry";
+obj2.arr[1] = [5,6];
+console.log(obj1); // { name: "Jerry", arr1: [1, [5,6], 4] }
+console.log(obj2); // { name: "Jerry", arr1: [1, [5,6], 4] }
+`
+
+`// 浅拷贝
+let obj1 = {
+    name : '浪里行舟',
+    arr : [1,[2,3],4],
+};
+let obj3=shallowClone(obj1)
+obj3.name = "阿浪";
+obj3.arr[1] = [5,6,7] ; // 新旧对象还是共享同一块内存
+// 这是个浅拷贝的方法
+function shallowClone(source) {
+    var target = {};
+    for(var i in source) {
+        if (source.hasOwnProperty(i)) {
+            target[i] = source[i];
+        }
+    }
+    return target;
+}
+console.log('obj1',obj1) // obj1 { name: '浪里行舟', arr: [ 1, [ 5, 6, 7 ], 4 ] }
+console.log('obj3',obj3) // obj3 { name: '阿浪', arr: [ 1, [ 5, 6, 7 ], 4 ] }
+`
+
+`// 深拷贝
+let obj1 = {
+    name : '浪里行舟',
+    arr : [1,[2,3],4],
+};
+let obj4=deepClone(obj1)
+obj4.name = "阿浪";
+obj4.arr[1] = [5,6,7] ; // 新对象跟原对象不共享内存
+// 这是个深拷贝的方法
+function deepClone(obj) {
+    if (obj === null) return obj; 
+    if (obj instanceof Date) return new Date(obj);
+    if (obj instanceof RegExp) return new RegExp(obj);
+    if (typeof obj !== "object") return obj;
+    let cloneObj = new obj.constructor();
+    for (let key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        // 实现一个递归拷贝
+        cloneObj[key] = deepClone(obj[key]);
+      }
+    }
+    return cloneObj;
+}
+console.log('obj1',obj1) // obj1 { name: '浪里行舟', arr: [ 1, [ 2, 3 ], 4 ] }
+console.log('obj4',obj4) // obj4 { name: '阿浪', arr: [ 1, [ 5, 6, 7 ], 4 ] }
+`
