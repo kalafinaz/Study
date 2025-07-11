@@ -1,6 +1,14 @@
-let obj1 = { name: "Tom", arr1: [1, [2,3], 4]};
-let obj3 = deepClone(obj1);
-obj3.name = "Spike";
-obj3.arr1[1] = [5,6];
-console.log(obj1);
-console.log(obj3);
+function generateDiv(number) {
+  const a = document.createElement('a');
+  a.textContent = '123';
+
+  let current = a;
+
+  for(let i=0; i<number; i++) {
+    const div = document.createElement('div');
+    div.appendChild(current);
+    current = div;
+  }
+
+  return current;
+}

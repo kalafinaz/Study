@@ -657,3 +657,64 @@ function deepClone(obj) {
 console.log('obj1',obj1) // obj1 { name: '浪里行舟', arr: [ 1, [ 2, 3 ], 4 ] }
 console.log('obj4',obj4) // obj4 { name: '阿浪', arr: [ 1, [ 5, 6, 7 ], 4 ] }
 `
+## 3.浅拷贝的实现方式
+### 3.1 Object.assign()
+Object.assign() 方法可以把任意多个的源对象自身的可枚举属性拷贝给目标对象，然后返回目标对象。
+`
+let obj1 = { person: {name: "kobe", age: 41},sports:'basketball' };
+let obj2 = Object.assign({}, obj1);
+obj2.person.name = "wade";
+obj2.sports = 'football'
+console.log(obj1); // { person: { name: 'wade', age: 41 }, sports: 'basketball' }
+`
+### 3.2 函数库lodash的_.clone方法
+`var _ = require('lodash');
+var obj1 = {
+    a: 1,
+    b: { f: { g: 1 } },
+    c: [1, 2, 3]
+};
+var obj2 = _.clone(obj1);
+console.log(obj1.b.f === obj2.b.f);// true`
+
+### 3.3 展开运算符...
+`
+let obj1 = { name: 'Kobe', address:{x:100,y:100}}
+let obj2= {... obj1}
+obj1.address.x = 200;
+obj1.name = 'wade'
+console.log('obj2',obj2) // obj2 { name: 'Kobe', address: { x: 200, y: 100 } }
+`
+
+### 3.4 Array.prototype.concat()
+`let arr1 = [1,2, {
+  name: 'Kobe',
+}];
+let arr2 = arr1.concat();
+arr2[2].name = 'wade';
+console.log(arr1);`
+
+### 3.5 Array.prototype.slice()
+`let arr = [1, 3, {
+    username: ' kobe'
+    }];
+let arr3 = arr.slice();
+arr3[2].username = 'wade'
+console.log(arr); // [ 1, 3, { username: 'wade' } ]
+`
+
+## 4.深拷贝的实现方式
+### 4.1 JSON.parse(JSON.stringify())
+`let arr = [1, 3, {
+    username: ' kobe'
+}];
+let arr4 = JSON.parse(JSON.stringify(arr));
+arr4[2].username = 'duncan'; 
+console.log(arr, arr4)
+`
+![alt text](image-24.png)
+
+这也是利用JSON.stringify将对象转成JSON字符串，再用JSON.parse把字符串解析成对象，一去一来，新的对象产生了，而且对象会开辟新的栈，实现深拷贝。
+这种方法虽然可以实现数组或对象深拷贝,但不能处理函数和正则，因为这两者基于JSON.stringify和JSON.parse处理后，得到的正则就不再是正则（变为空对象），得到的函数就不再是函数（变为null）了。
+比如下面的例子：
+
